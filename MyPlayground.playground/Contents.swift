@@ -17,23 +17,39 @@ func getTeamUrl(team: String) -> URL {
     return URL(string: "\(teamLinks[team]!)\(teamGroups[team]!)")!
 }
 
+func formatTable(webpage: String, shouldDeleteFirstRow: Bool) -> String {
+    let start = webpage.range(of: "<table")
+    let end = webpage.range(of: "</table>")
+    let table = webpage[start!.lowerBound..<end!.upperBound]
+    
+    var trimmedTable = String(table).replacingOccurrences(of: "  ", with: " ", options: String.CompareOptions.regularExpression)
+    for _ in 1...10 {
+        trimmedTable = String(trimmedTable).replacingOccurrences(of: "  ", with: " ", options: String.CompareOptions.regularExpression)
+        trimmedTable = String(trimmedTable).replacingOccurrences(of: "\\s", with: " ", options: String.CompareOptions.regularExpression)
+    }
+    trimmedTable = String(trimmedTable).replacingOccurrences(of: "\n", with: " ", options: String.CompareOptions.regularExpression)
+    trimmedTable = String(trimmedTable).replacingOccurrences(of: "href=\"", with: "href=\"http://tmv.liga.nu", options: String.CompareOptions.regularExpression)
+    if shouldDeleteFirstRow {
+        trimmedTable = String(trimmedTable).replacingOccurrences(of: "<tr> <td> &nbsp;</td> ", with: "<tr> ", options: String.CompareOptions.regularExpression)
+        trimmedTable = String(trimmedTable).replacingOccurrences(of: "<tr> <th>&nbsp;</th> ", with: "<tr> ", options: String.CompareOptions.regularExpression)
+        
+    }
+    return trimmedTable
+}
+
 func getTeamTable(team: String, finishHandler: @escaping (String) -> Void) {
     let task = URLSession.shared.dataTask(with: getTeamUrl(team: team)) {(data, response, error) in
         guard let data = data else { return }
         let webpage = String(data: data, encoding: .utf8)!
-        //print(webpage)
-        let start = webpage.range(of: "<table")
         let end = webpage.range(of: "</table>")
-        let table = webpage[start!.lowerBound..<end!.upperBound]
-        
-        var trimmedTable = String(table).replacingOccurrences(of: "  ", with: " ", options: String.CompareOptions.regularExpression)
-        for _ in 1...5 {
-            trimmedTable = String(trimmedTable).replacingOccurrences(of: "  ", with: " ", options: String.CompareOptions.regularExpression)
-        }
-        trimmedTable = String(trimmedTable).replacingOccurrences(of: "\n", with: " ", options: String.CompareOptions.regularExpression)
-        trimmedTable = String(trimmedTable).replacingOccurrences(of: "href=\"", with: "href=\"http://tmv.liga.nu", options: String.CompareOptions.regularExpression)
+        //print(webpage)
+        let trimmedTable = formatTable(webpage: webpage, shouldDeleteFirstRow: true)
         print("\n\n\n!!!!! TEAM: \(team) \n")
-        print(trimmedTable)
+        print("\n\n\nTabelle \n\t\(trimmedTable)")
+        let webpageEnd = String(webpage[end!.upperBound..<webpage.endIndex])
+        let results = formatTable(webpage: webpageEnd, shouldDeleteFirstRow: false)
+        print("\n\n\nErgebnisse \n\t\(results)")
+        
         finishHandler(team)
     }
 
